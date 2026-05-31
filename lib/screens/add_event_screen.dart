@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/schedule_event.dart';
 import '../providers/schedule_provider.dart';
+import '../services/smart_assistant.dart';
 
 class AddEventScreen extends StatefulWidget {
   const AddEventScreen({super.key});
@@ -18,12 +19,34 @@ class _AddEventScreenState extends State<AddEventScreen> {
   final _descriptionController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  
+  String _selectedCategory = 'Personal';
+  int _selectedPriority = 1;
+
+  final List<String> _categories = ['Personal', 'Work', 'Fitness', 'Social', 'Other'];
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.addListener(_onTitleChanged);
+  }
 
   @override
   void dispose() {
+    _titleController.removeListener(_onTitleChanged);
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _onTitleChanged() {
+    if (_titleController.text.length > 3) {
+      final analysis = SmartAssistant.analyzeTitle(_titleController.text);
+      setState(() {
+        _selectedCategory = analysis['category'];
+        _selectedPriority = analysis['priority'];
+      });
+    }
   }
 
   Future<void> _pickDate() async {
@@ -67,6 +90,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
         title: _titleController.text,
         description: _descriptionController.text,
         dateTime: finalDateTime,
+        category: _selectedCategory,
+        priority: _selectedPriority,
       );
 
       Provider.of<ScheduleProvider>(context, listen: false).addEvent(newEvent);
@@ -81,65 +106,115 @@ class _AddEventScreenState extends State<AddEventScreen> {
         title: const Text('Add New Event'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Title',
-                  border: OutlineInputBorder(),
+                  hintText: 'e.g. Work Meeting',
+                  prefixIcon: const Icon(Icons.title),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a title';
-                  }
-                  return null;
-                },
+                validator: (value) => (value == null || value.isEmpty) ? 'Please enter a title' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description (Optional)',
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.description),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                maxLines: 3,
+                maxLines: 2,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 25),
+              const Text('Category', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                children: _categories.map((cat) {
+                  return ChoiceChip(
+                    label: Text(cat),
+                    selected: _selectedCategory == cat,
+                    onSelected: (selected) {
+                      if (selected) setState(() => _selectedCategory = cat);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 25),
+              const Text('Priority', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _priorityChip(1, 'Low', Colors.green),
+                  _priorityChip(2, 'Medium', Colors.orange),
+                  _priorityChip(3, 'High', Colors.red),
+                ],
+              ),
+              const SizedBox(height: 25),
+              const Text('Date & Time', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
-                    child: ListTile(
-                      title: const Text('Date'),
-                      subtitle: Text(DateFormat('yyyy-MM-dd').format(_selectedDate)),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: _pickDate,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickDate,
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(DateFormat('MMM dd, yyyy').format(_selectedDate)),
                     ),
                   ),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: ListTile(
-                      title: const Text('Time'),
-                      subtitle: Text(_selectedTime.format(context)),
-                      trailing: const Icon(Icons.access_time),
-                      onTap: _pickTime,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickTime,
+                      icon: const Icon(Icons.access_time),
+                      label: Text(_selectedTime.format(context)),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _submitForm,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _submitForm,
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Save Event', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Save Event', style: TextStyle(fontSize: 18)),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _priorityChip(int level, String label, Color color) {
+    bool isSelected = _selectedPriority == level;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedPriority = level),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : color,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
