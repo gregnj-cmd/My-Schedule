@@ -3,9 +3,12 @@ class ScheduleEvent {
   final String title;
   final String description;
   final DateTime dateTime;
-  final String category; // Work, Personal, Fitness, etc.
-  final int priority; // 1: Low, 2: Medium, 3: High
+  final String category;
+  final int priority;
   final bool isCompleted;
+  final String notes;
+  final List<Map<String, dynamic>> subTasks; // { 'title': String, 'isDone': bool }
+  final bool hasConflict;
 
   ScheduleEvent({
     required this.id,
@@ -15,6 +18,9 @@ class ScheduleEvent {
     this.category = 'Personal',
     this.priority = 1,
     this.isCompleted = false,
+    this.notes = '',
+    this.subTasks = const [],
+    this.hasConflict = false,
   });
 
   ScheduleEvent copyWith({
@@ -25,6 +31,9 @@ class ScheduleEvent {
     String? category,
     int? priority,
     bool? isCompleted,
+    String? notes,
+    List<Map<String, dynamic>>? subTasks,
+    bool? hasConflict,
   }) {
     return ScheduleEvent(
       id: id ?? this.id,
@@ -34,6 +43,9 @@ class ScheduleEvent {
       category: category ?? this.category,
       priority: priority ?? this.priority,
       isCompleted: isCompleted ?? this.isCompleted,
+      notes: notes ?? this.notes,
+      subTasks: subTasks ?? this.subTasks,
+      hasConflict: hasConflict ?? this.hasConflict,
     );
   }
 
@@ -46,6 +58,9 @@ class ScheduleEvent {
       'category': category,
       'priority': priority,
       'isCompleted': isCompleted,
+      'notes': notes,
+      'subTasks': subTasks,
+      'hasConflict': hasConflict,
     };
   }
 
@@ -58,6 +73,9 @@ class ScheduleEvent {
       category: map['category'] ?? 'Personal',
       priority: map['priority'] ?? 1,
       isCompleted: map['isCompleted'] ?? false,
+      notes: map['notes'] ?? '',
+      subTasks: List<Map<String, dynamic>>.from(map['subTasks'] ?? []),
+      hasConflict: map['hasConflict'] ?? false,
     );
   }
 }
